@@ -14,16 +14,16 @@
 #include "MeMegaPi.h"
 #include "Pixy.h"
 
+// Motors setup
 MeEncoderMotor motorLeft(PORT1A);
-
 MeEncoderMotor motorRight(PORT1B);
-
 MeEncoderMotor motorFront(PORT2A);
 
 uint8_t motorSpeed = 100;
 int motorAngle = 10;
 
-MeUltrasonicSensor ultraSensor(PORT_8); /* Ultrasonic module can ONLY be connected to port 3, 4, 6, 7, 8 of base shield. */
+/* Ultrasonic setup */
+MeUltrasonicSensor ultraSensor(PORT_8);
 
 /**
  * Fonction d'initialisation
@@ -94,4 +94,12 @@ float getMotorPosition()
 float draw()
 {
 
+}
+
+int getUltrasensorPosition()
+{
+  Serial.print("Distance : ");
+  Serial.print(ultraSensor.distanceCm() );
+  Serial.println(" cm");
+  delay(100);
 }
