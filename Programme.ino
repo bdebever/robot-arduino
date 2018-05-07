@@ -54,7 +54,7 @@ void ultrasonStart()
 }
 
 /**
- * Fonction permettant de mettre en marche un moteur
+ * Fonction permettant de mettre en marche un moteur - pilotage
  */
 void engineStart()
 {
@@ -70,4 +70,28 @@ void engineStart()
   motorRight.moveTo(motorAngle, -motorSpeed);
   motorFront.moveTo(motorAngle, -motorSpeed);
   delay(2000);
+}
+
+/**
+ * Fonction permettant de get la vitesse du moteur
+ */
+float getMotorSpeed()
+{
+
+}
+
+/**
+ * Fonction permettant de get la position du moteur
+ */
+float getMotorPosition()
+{
+
+}
+
+/**
+ * Fonction permettant de tracer une courbe (eg: position, vitesse en fonction du temps)
+ */
+float draw()
+{
+
 }
