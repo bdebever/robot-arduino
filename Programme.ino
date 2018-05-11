@@ -4,26 +4,24 @@
  * @author  Baptiste Debever - Alexandre Deledalle
  * @version V0.0.1
  * @date    2018/05/01
+ * @link http://learn.makeblock.com/en/electronics/m
  *
  * Function List:
  *    1. void MeMegaPiDCMotorTest::run(int16_t speed)
  *    2. void MeMegaPiDCMotorTest::stop(void)
  */
 
-#include "MeEncoderMotor.h"
 #include "MeMegaPi.h"
 #include "Pixy.h"
 
 // Motors setup
-MeEncoderMotor motorLeft(PORT1A);
-MeEncoderMotor motorRight(PORT1B);
-MeEncoderMotor motorFront(PORT2A);
 
-uint8_t motorSpeed = 100;
-int motorAngle = 10;
 
 /* Ultrasonic setup */
 MeUltrasonicSensor ultraSensor(PORT_8);
+
+// Pixy setup
+Pixy pixy;
 
 /**
  * Fonction d'initialisation
@@ -31,6 +29,7 @@ MeUltrasonicSensor ultraSensor(PORT_8);
 void setup()
 {
   Serial.begin(9600);
+  pixy.init();
 }
 
 /**
@@ -38,20 +37,10 @@ void setup()
  */
 void loop()
 {
-  ultrasonStart();
-  engineStart();
+  getUltrasensorPosition();
+  //engineStart();
 }
 
-/**
- * Fonction permettant de mettre en marche notre capteur ultrason
- */
-void ultrasonStart()
-{
-  Serial.print("Distance : ");
-  Serial.print(ultraSensor.distanceCm() );
-  Serial.println(" cm");
-  delay(100); /* the minimal measure interval is 100 milliseconds */
-}
 
 /**
  * Fonction permettant de mettre en marche un moteur - pilotage
@@ -96,6 +85,9 @@ float draw()
 
 }
 
+/**
+ * Fonction permettant de tracer une courbe (eg: position, vitesse en fonction du temps)
+ */
 int getUltrasensorPosition()
 {
   Serial.print("Distance : ");
