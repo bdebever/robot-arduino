@@ -6,19 +6,20 @@
  * @date    2018/05/01
  * @link http://learn.makeblock.com/en/electronics/m
  *
- * Function List:
- *    1. void MeMegaPiDCMotorTest::run(int16_t speed)
- *    2. void MeMegaPiDCMotorTest::stop(void)
  */
 
 #include "MeMegaPi.h"
 #include "Pixy.h"
+#include "Arduino.h"
 
 // Motors setup
-
+int16_t moveSpeed = 180;
+MeEncoderOnBoard Encoder_1(SLOT1);
+MeEncoderOnBoard Encoder_2(SLOT2);
+MeEncoderOnBoard Encoder_3(SLOT3);
 
 /* Ultrasonic setup */
-MeUltrasonicSensor ultraSensor(PORT_8);
+MeUltrasonicSensor *us = NULL;
 
 // Pixy setup
 Pixy pixy;
@@ -30,6 +31,9 @@ void setup()
 {
   Serial.begin(9600);
   pixy.init();
+
+  // Init Ultrason
+  us = new MeUltrasonicSensor(PORT_7);
 }
 
 /**
@@ -37,28 +41,23 @@ void setup()
  */
 void loop()
 {
-  getUltrasensorPosition();
-  //engineStart();
+  int objectDetected = getUltrasensorValue();
+  if (objectDetected <= 20) {
+    // Move right
+    Serial.print('Objet inférieure à 20cm détectée à: ' + positionDetected + 'cm');
+  }
 }
 
 
 /**
  * Fonction permettant de mettre en marche un moteur - pilotage
+ *
+ * @var motor - le moteur à démarrer
+ * @var movement - le mouvement souhaité
  */
-void engineStart()
+void engineStart(int motor, int movement)
 {
-  motorLeft.moveTo(motorAngle, motorSpeed); /* value: between -255 and 255. */
-  motorRight.moveTo(motorAngle, motorSpeed); /* value: between -255 and 255. */
-  motorFront.moveTo(motorAngle, motorSpeed);
 
-  //float positionLeft = motorLeft.getCurrentPosition();
-  //print(positionLeft);
-
-  delay(100);
-  motorLeft.moveTo(motorAngle, -motorSpeed);
-  motorRight.moveTo(motorAngle, -motorSpeed);
-  motorFront.moveTo(motorAngle, -motorSpeed);
-  delay(2000);
 }
 
 /**
@@ -86,12 +85,150 @@ float draw()
 }
 
 /**
- * Fonction permettant de tracer une courbe (eg: position, vitesse en fonction du temps)
+ * Fonction permettant de récupérer une valeur du capteur ultrason
  */
-int getUltrasensorPosition()
+int getUltrasensorValue()
 {
-  Serial.print("Distance : ");
-  Serial.print(ultraSensor.distanceCm() );
-  Serial.println(" cm");
-  delay(100);
+  return (float) us->distanceCm();
+}
+
+int getPixyValue()
+{
+  static int i = 0;
+  int j;
+  uint16_t blocks;
+  char buf[32];
+
+  // grab blocks!
+  blocks = pixy.getBlocks();
+
+  // If there are detect blocks, print them!
+  if (blocks)
+  {
+    i++;
+
+    // do this (print) every 50 frames because printing every
+    // frame would bog down the Arduino
+    if (i%50==0)
+    {
+      sprintf(buf, "Detected %d:\n", blocks);
+      Serial.print(buf);
+      for (j=0; j<blocks; j++)
+      {
+        sprintf(buf, "  block %d: ", j);
+        Serial.print(buf);
+        pixy.blocks[j].print();
+      }
+    }
+  }
+}
+
+
+////**************** Fonctions supplementaires pour commande moteur ***************//////
+/**
+ * \par Function
+ *    Forward
+ * \par Description
+ *    This function use to control the car kit go forward.
+ */
+void Forward(void)
+{
+  Encoder_1.setMotorPwm(moveSpeed);
+  Encoder_2.setMotorPwm(-moveSpeed);
+}
+
+/**
+ * \par Function
+ *    Backward
+ * \par Description
+ *    This function use to control the car kit go backward.
+ */
+void Backward(void)
+{
+  Encoder_1.setMotorPwm(-moveSpeed);
+  Encoder_2.setMotorPwm(moveSpeed);
+}
+
+/**
+ * \par Function
+ *    BackwardAndTurnLeft
+ * \par Description
+ *    This function use to control the car kit go backward and turn left.
+ */
+void BackwardAndTurnLeft(void)
+{
+  Encoder_1.setMotorPwm(-moveSpeed/4);
+  Encoder_2.setMotorPwm(moveSpeed);
+}
+
+/**
+ * \par Function
+ *    BackwardAndTurnRight
+ * \par Description
+ *    This function use to control the car kit go backward and turn right.
+ */
+void BackwardAndTurnRight(void)
+{
+  Encoder_1.setMotorPwm(-moveSpeed);
+  Encoder_2.setMotorPwm(moveSpeed/4);
+}
+
+/**
+ * \par Function
+ *    TurnLeft
+ * \par Description
+ *    This function use to control the car kit go backward and turn left.
+ */
+void TurnLeft(void)
+{
+  Encoder_1.setMotorPwm(moveSpeed);
+  Encoder_2.setMotorPwm(-moveSpeed/2);
+}
+
+/**
+ * \par Function
+ *    TurnRight
+ * \par Description
+ *    This function use to control the car kit go backward and turn right.
+ */
+void TurnRight(void)
+{
+  Encoder_1.setMotorPwm(moveSpeed/2);
+  Encoder_2.setMotorPwm(-moveSpeed);
+}
+
+/**
+ * \par Function
+ *    TurnLeft1
+ * \par Description
+ *    This function use to control the car kit go backward and turn left(fast).
+ */
+void TurnLeft1(void)
+{
+  Encoder_1.setMotorPwm(moveSpeed);
+  Encoder_2.setMotorPwm(moveSpeed);
+}
+
+/**
+ * \par Function
+ *    TurnRight1
+ * \par Description
+ *    This function use to control the car kit go backward and turn right(fast).
+ */
+void TurnRight1(void)
+{
+  Encoder_1.setMotorPwm(-moveSpeed);
+  Encoder_2.setMotorPwm(-moveSpeed);
+}
+
+/**
+ * \par Function
+ *    Stop
+ * \par Description
+ *    This function use to stop the car kit.
+ */
+void Stop(void)
+{
+  Encoder_1.setMotorPwm(0);
+  Encoder_2.setMotorPwm(0);
 }
