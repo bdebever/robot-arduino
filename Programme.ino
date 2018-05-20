@@ -15,9 +15,17 @@
 
 SimpleTimer timer;                 // Timer pour échantillonnage
 unsigned int tick_codeuse = 0;     // Compteur de tick de la codeuse
+
 boolean entryFound = false;
 boolean exitFound = false;
 int distance = 0;
+int axeCentre = 0; // Decalage par rapport au centre
+
+// la liste des états possible de notre système
+enum {FORWARD, SIDEWARD, STANDSTILL} direction;
+
+unsigned long temps_actuel;
+unsigned long mem_temps;
 
 // Distance parcourue en 1 tour moteur
 const float distanceMotorLapse = 26.8;
@@ -106,83 +114,128 @@ void setup()
  */
 void loop()
 {
+  // Variables locales
+  float speed1, speed2, speed3;
+
+  //--- Attente ---//
+  // Réalisation d'une attente avec la resynchronisation du programme
+  do
+  {
+    temps_actuel = millis() ;
+  }
+  while((temps_actuel-mem_temps)<=temps_attente);  //
+  mem_temps = temps_actuel;
+
+  // Lecture encodeurs
   Encoder_1.loop();
   Encoder_2.loop();
   Encoder_3.loop();
+  speed1 = Encoder_1.getCurrentSpeed();
+  speed2 = Encoder_2.getCurrentSpeed();
+  speed3 = Encoder_3.getCurrentSpeed();
 
-  // On interroge l'US
+  // On interroge l'ultrason
   getUltrasensorValue();
-  delay(50);
-  
+
   // On avance
   Encoder_1.setMotorPwm(-moveSpeed);
-  Encoder_3.setMotorPwm(-moveSpeed); 
+  Encoder_3.setMotorPwm(-moveSpeed);
+  direction = FORWARD;
 
-  // Objet détecté à moins de 20cm
-  if (distance < 20) {
-    // On arrete le moteur
-    stopMotor();
+  //--- Machine d'etat - similaire a un Grafcet ---//
+  // Comme un Grafcet
 
-    // Ask Pisky if we know anything
-    getPixyValue();
-    while(1) {};
+  switch(direction)
+  {
+      case FORWARD:
+        // Distance superieure a 20 - aucun besoin de s'inquieter
+        if (distance > 20)
+          break;
 
+        // On arrete le moteur car distance inferieure a 20
+        stopMotor();
+        direction = STANDSTILL;
+        break;
 
-    // Otherwise, look right
-    turnRight(90);
-    delay(500);
-    
-    // Vérifier qu'il n'y a rien à droite
-    getUltrasensorValue();
-    
-    // Il y a quelque chose a droite => on se tourne à gauche
-    if (distance < 20) {
-      turnLeft(180);
+      case SIDEWARD:
 
-      // Check 
-      getUltrasensorValue();
-      if (distance < 30){
-        // We are fucked
-        // TODO: handle this case and go backward
-      }
+        // Rien en vue -> on peut se decaler vers la droite
+        if (distance > 20) {
+          forward(true);
+          axeCentre += 1;
+          // On se replace vers lavant
+          turnLeft(90);
+        } else {
+          turnLeft(180);
+          // On suppose donc quil ny a rien
+          forward(true);
+          axeCentre -= 1;
+          turnRight(90);
+        }
 
-      forward();
-      turnRight(90);
-      // TODO: set axis move
-      delay(500);
-    }
+        // On repart de lavant
+        forward(false);
+        // Set le nouvel etat
+        direction = FORWARD;
+        break;
 
-    // Rien a droite, on peut y aller
-    forward();
-    delay(500);
-    turnLeft(90);
-    delay(500);
+      case STANDSTILL:
 
+        // Demander a Pixy si on detecte un object connu
+        if (getPixyValue()) {
+
+          // Sil sagit de la porte dentree (on suppose rien dautre pour linstant)
+          // se decaler
+
+          // Sil sagit de la porte de sortie
+
+          // Stop
+        } else {
+          // Sinon, on regarde sur la droite
+          turnRight(90);
+          getUltrasensorValue();
+          delay(100);
+
+        }
+
+        // Set le nouvel etat
+        direction = SIDEWARD;
+        break;
   }
 
-       
-  // We don't have the ball: get the distance with the Pixy 
+
+  //--- Ecritures des valeurs (Print) ---//
+
+  Serial.print("Distance:");
+  Serial.print(distance);
+  Serial.print("Megapi:");
+  Serial.print(distance);
+
+  //--> Ecriture pour le traceur série
+  Serial.print(speed1);
+  Serial.print(", ");
+  Serial.print(speed2);
+  Serial.print(", ");
+  Serial.print(speed3);
+
+  // We don't have the ball: get the distance with the Pixy
   if (!entryFound) {
     Serial.print("ball: ");
     Serial.println(entryFound);
-    
-    
+
+
     Serial.print(Encoder_1.getCurrentSpeed());
     Serial.print(Encoder_3.getCurrentSpeed());
-    
+
     if (getUltrasensorValue() < 5) {
         entryFound = true;
         Serial.println(Encoder_1.getCurrentSpeed());
     }
-    
-     
+
+
   }
 
-  // We now have the ball, let's find our position
-  // Go score
-  // Move forward 
-  // If we find an obstacle - stop - look right and if no obstacle, turn right and move forward 
-  
+
 }
 
 
@@ -215,7 +268,7 @@ void turnLeft(int rotation)
 }
 
 /**
- * Avancer d'une vitesse 
+ * Avancer d'une vitesse
  */
 void forward()
 {
@@ -271,7 +324,7 @@ float getUltrasensorValue()
 }
 
 /**
- * 
+ *
  */
 void getPixyValue()
 {
@@ -310,15 +363,42 @@ void getPixyValue()
 void compteur(){
     tick_codeuse++;  // On incrémente le nombre de tick de la codeuse
 }
- 
- 
+
+
 /* Interruption pour calcul du PID */
-void asservissement()
+void asservissement(float consigne, int moteur)
 {
     // DEBUG
     Serial.println(tick_codeuse);
- 
+
     // Réinitialisation du nombre de tick de la codeuse
     tick_codeuse=0;
-}
 
+    //--- PID ---//
+    erreur_precedente = 0;
+    erreur = consigne - valeur_mesuree;
+
+    result_P = erreur * Kp;
+    somme_erreurs +=  erreur;
+    result_I = somme_erreurs * Ki;
+    delta_erreur = erreur - erreur_precedente;
+    erreur_precedente = erreur;
+    result_D = delta_erreurs * Kd;
+
+    // Notre commande
+    commande = result_P + result_I + result_D;
+    // saturation
+    commande = constrain(commande,-255,255);
+
+    // Reguler
+    switch(moteur)
+    {
+        case 1:
+          Encoder_1.setMotorPwm(commande);
+          break;
+        case 2:
+          Encoder_2.setMotorPwm(commande);
+        case 3:
+          Encoder_3.setMotorPwm(commande);
+    }
+}
