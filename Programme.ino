@@ -365,7 +365,10 @@ void compteur(){
 }
 
 
-/* Interruption pour calcul du PID */
+/**
+ * Interruption pour calcul du PID
+ * @link http://www.ferdinandpiette.com/blog/2012/04/asservissement-en-vitesse-dun-moteur-avec-arduino/
+ */
 void asservissement(float consigne, int moteur)
 {
     // DEBUG
@@ -375,7 +378,6 @@ void asservissement(float consigne, int moteur)
     tick_codeuse=0;
 
     //--- PID ---//
-    erreur_precedente = 0;
     erreur = consigne - valeur_mesuree;
 
     result_P = erreur * Kp;
