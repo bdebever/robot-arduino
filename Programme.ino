@@ -14,18 +14,18 @@
 #include "SimpleTimer.h"
 
 unsigned int    tickCodeuse = 0;     // Compteur de tick de la codeuse
-boolean         entryFound = false;
-boolean         exitFound = false;
+
 int             distance = 0;
-int             axeCentre = 0; // Decalage par rapport au centre
-unsigned long   temps_attente;
 float           speed1, speed2, speed3;
+
 bool            debug = false;
 bool            graph = true;
+
 float           erreur;
 float           somme_erreurs;
 float           erreur_precedente;
 unsigned long   valeur_mesuree;
+
 int16_t         moveSpeed = 10;
 const int       frequenceEchantillonnage = 50;
 int             consigne = 10;
@@ -34,22 +34,20 @@ float           commande = 0;
 int             pixySignature;
 int             pixyX = 0;
 
-// la liste des états possible de notre système
-enum {FORWARD, SIDEWARD, STANDSTILL} direction;
-
 // Motors setup
 MeEncoderOnBoard Encoder_1(PORT_1);
 MeEncoderOnBoard Encoder_2(PORT_2);
 MeEncoderOnBoard Encoder_3(PORT_3);
 
-// Capteur ultrasonor
+// Capteur ultrason
 MeUltrasonicSensor *us = NULL;     //PORT_7
 
 // Pixy setup
 Pixy pixy;
+// Timer
 SimpleTimer timer;
 
-/// Interruption pour encodeur1
+// Interruption pour encodeur1
 void isr_process_encoder1(void)
 {
   if(digitalRead(Encoder_1.getPortB()) == 0)
@@ -116,12 +114,10 @@ void setup()
   TCCR4A = _BV(WGM40);//PIN5
   TCCR4B = _BV(CS41) | _BV(CS40) | _BV(WGM42);
   // Fin Set PWM
-  
+
   // Pixy et Ultrason setup
   pixy.init();
   us = new MeUltrasonicSensor(PORT_7); // Init Ultrason
-
-  direction = FORWARD;
 }
 
 /**
@@ -140,10 +136,6 @@ void loop()
   speed2 = Encoder_2.getCurrentSpeed();
   speed3 = Encoder_3.getCurrentSpeed();
 
-  // Demarrer moteurs
-  //Encoder_1.moveTo(50);
-  //Encoder_3.moveTo(50);
-  
   // Debugs
   if (debug) {
     Serial.print("Distance : ");
@@ -185,7 +177,7 @@ void stopMotor(void)
 /**
  * Fonction permettant de rÃ©cupÃ©rer une valeur du capteur ultrason
  */
-float getUltrasensorValue()
+float getUltrasensorValue(void)
 {
   distance = (int) us->distanceCm();
   return distance;
@@ -194,7 +186,7 @@ float getUltrasensorValue()
 /**
  * Récuperer valeurs pixy
  */
-void getPixyValue()
+void getPixyValue(void)
 {
   static int i = 0;
   int j;
@@ -236,7 +228,7 @@ void getPixyValue()
 
     }
   }
-   
+
 }
 
 
@@ -313,16 +305,16 @@ void ReverseLeft(void)
 }
 
 /*
-   Compteur pour le PID et l'asservisement
+ * Compteur pour le PID et l'asservisement
 */
-void compteur() {
+void compteur(void) {
   tickCodeuse++;
 }
 
 /**
  * Interruption pour calcul du PID
  */
-void asservissement()
+void asservissement(void)
 {
     float result_P;
     float result_D;
@@ -348,29 +340,29 @@ void asservissement()
     }
 
     //--- PID ---//
-    erreur = consigne - Encoder_1.getCurrentSpeed();;
-    
+    erreur = consigne - speed1;
+
     result_P = erreur * Kp;
     somme_erreurs +=  erreur;
-    
+
     result_I = somme_erreurs * Ki;
     delta_erreurs = erreur - erreur_precedente;
-    
+
     erreur_precedente = erreur;
     result_D = delta_erreurs * Kd;
 
     // Notre commande
     commande = result_P + result_I + result_D;
-       
+
     // On assigne la valeur aux moteurs
     moveSpeed = commande;
 
-    // Appeler Pixy 
+    // Appeler Pixy
     getPixyValue();
 
-  
+
   // Si présence drapeau: arret
-    if (pixySignature == 1 && 
+    if (pixySignature == 1 &&
       minX - 50 <= pixyX <= minX + 50) {
       // Carton rouge: stop
       stopMotor();
@@ -383,87 +375,31 @@ void asservissement()
       } else {
         TurnLeft();
       }
-  
+
       getUltrasensorValue();
-  
+
       // Eviter obstacle intermédiaire
       if (distance < 30)
         break;
-      
+
       // Refresh;
       getPixyValue();
     }
 
     if (distance > 30) {
       Forward();
-      // On a un objet (joueur)  
+      // On a un objet (joueur)
     } else {
       // Sinon, on tourne sur la droite
       if (debug)
         Serial.println("Obstacle detecte");
-      
+
       Backward();
       delay(500);
       //Forward();
       delay(2000);
       TurnLeft();
       delay(200);
-      
+
     }
-  
-  /*
-  switch(direction)
-  {
-      case FORWARD:
-        // Distance superieure a 20 - aucun besoin de s'inquieter
-        if (distance > 20) {
-          Forward();
-          break;
-        }
-
-        // On arrete le moteur car distance inferieure a 20
-        stopMotor();
-        direction = STANDSTILL;
-        break;
-
-      case SIDEWARD:
-
-        // Rien en vue -> on peut se decaler vers la droite
-        if (distance > 20) {
-          Forward();
-          delay(200);
-          stopMotor();
-          // On se replace vers lavant
-          TurnLeft();
-        } else {
-          TurnLeft();
-          // On suppose donc quil ny a rien
-          Forward();
-          axeCentre -= 1;
-          TurnRight();
-        }
-
-        // Set le nouvel etat
-        direction = FORWARD;
-        break;
-
-      case STANDSTILL:
-
-        // Demander a Pixy si on detecte un object connu
-        if (getPixyValue()) {
-          // Sil sagit de la porte de sortie: stop
-          stopMotor();
-          while(1){};
-          // Stop
-        } else {
-          // Sinon, on regarde sur la droite
-          TurnRight();
-          delay(100);
-        //}
-
-        // Set le nouvel etat
-        direction = SIDEWARD;
-        break;
-  }*/
 }
-
