@@ -188,10 +188,10 @@ float getUltrasensorValue(void)
  */
 void getPixyValue(void)
 {
-  static int i = 0;
-  int j;
-  uint16_t blocks;
-  char buf[32];
+  static int  i = 0;
+  int         j;
+  uint16_t    blocks;
+  char        buf[32];
 
   // grab blocks!
   blocks = pixy.getBlocks();
@@ -209,9 +209,6 @@ void getPixyValue(void)
         Serial.print(buf);
       }
 
-      // Pixel resolution --> 320 * 200, donc center à 160
-      int minX = 160;
-
       for (j = 0; j < blocks; j++)
       {
 
@@ -225,10 +222,8 @@ void getPixyValue(void)
         pixySignature = pixy.blocks[j].signature;
         pixyX = pixy.blocks[j].x;
       }
-
     }
   }
-
 }
 
 
@@ -307,7 +302,8 @@ void ReverseLeft(void)
 /*
  * Compteur pour le PID et l'asservisement
 */
-void compteur(void) {
+void compteur(void)
+{
   tickCodeuse++;
 }
 
@@ -323,6 +319,8 @@ void asservissement(void)
     float Ki = 0.7;
     float Kd = 0;
     float delta_erreurs;
+
+    // Pixel resolution --> 320 * 200, donc centrer a 160
     int minX = 160;
 
    int moteur = 1;
@@ -390,7 +388,6 @@ void asservissement(void)
       Forward();
       // On a un objet (joueur)
     } else {
-      // Sinon, on tourne sur la droite
       if (debug)
         Serial.println("Obstacle detecte");
 
