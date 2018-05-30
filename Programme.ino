@@ -363,8 +363,11 @@ void asservissement(void)
     if (pixySignature == 1 &&
       minX - 50 <= pixyX <= minX + 50) {
       // Carton rouge: stop
-      stopMotor();
-      while(1){};// Stop
+      stopMotor(); 
+      while(pixySignature != 3){
+        // On attends la signature 3 pour reprendre le jeu
+        getPixyValue();
+      }
     }
 
     while(pixySignature == 2) {
